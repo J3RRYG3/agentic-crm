@@ -1,6 +1,6 @@
 # CLAUDE.md — Fuente de Verdad Técnica: Mini-CRM MERN Stack
 
-> **Última actualización**: 2026-06-04 | **Estado general**: MVP 100% completo + Dockerizado
+> **Última actualización**: 2026-06-04 | **Estado general**: MVP 100% completo + Dockerizado + Suite E2E
 
 ## Estado Actual del Proyecto
 
@@ -16,6 +16,7 @@
 | Script de Seed | ✅ Completo | `server/src/seed.ts` (10 contactos, 8 opps, 6 tickets, 3 campañas) |
 | TypeScript Strict Check | ✅ 0 errores | `tsc --noEmit` limpio en server y client |
 | **Dockerización** | ✅ Completo | `docker-compose.yml`, `server/Dockerfile`, `client/Dockerfile` |
+| **Suite E2E (Playwright)** | ✅ Completo | `e2e-tests/` — 22 tests, 6 módulos, TypeScript strict |
 
 ---
 
@@ -183,12 +184,93 @@ actividad1/
 
 ---
 
+## Flujo de Testing Automatizado
+
+### Prerequisito — Docker Desktop debe estar activo
+
+```bash
+# 1. Iniciar Docker Desktop (abrir la aplicación GUI en Windows)
+# 2. Desde la raíz del proyecto, levantar servicios
+docker compose up --build -d
+
+# 3. Poblar la BD con datos del Seed (necesario antes de los tests E2E)
+docker exec -it crm_backend npm run seed
+
+# 4. Verificar que los servicios responden
+curl http://localhost:8080/api/health   # → 200 OK
+```
+
+### Ejecutar la suite completa
+
+```bash
+cd e2e-tests
+
+# Suite completa (22 tests: API + E2E)
+npm test
+
+# Solo tests de integración de la API REST (Bloque A)
+npm run test:api
+
+# Solo tests E2E de interfaz (Bloque B)
+npm run test:e2e
+
+# Con navegador visible (útil para depurar)
+npm run test:headed
+
+# Modo depuración interactiva con Playwright Inspector
+npm run test:debug
+```
+
+### Ver reportes y evidencias
+
+```bash
+# Abrir reporte HTML interactivo con capturas de pantalla
+cd e2e-tests && npm run report
+# → Abre e2e-tests/playwright-report/index.html en el navegador
+
+# Ver trace de un test fallido (línea de tiempo de peticiones)
+npx playwright show-trace e2e-tests/test-results/<nombre-test>/trace.zip
+```
+
+### Arquitectura del Framework E2E
+
+```
+e2e-tests/
+├── playwright.config.ts        ← Configuración: 2 proyectos (api + chromium), screenshots ON
+├── global-setup.ts             ← Health-check + auto-start docker compose
+├── tsconfig.json               ← TypeScript strict, sin any
+├── tests/
+│   ├── api/                    ← Bloque A: Integración REST
+│   │   ├── contacts.spec.ts    ← POST create, POST note, PUT update (M1)
+│   │   ├── tickets.spec.ts     ← PUT status/priority, GET format, GET filter (M3)
+│   │   └── campaigns.spec.ts   ← POST send transaccional + impacto relacional (M4)
+│   └── e2e/                    ← Bloque B: End-to-End UI
+│       ├── dashboard.spec.ts   ← 7 tests: KPIs ($223.700, 10 contactos, 12.5%) (M5)
+│       ├── pipeline.spec.ts    ← Kanban columnas, cambio etapa + persistencia (M2)
+│       └── tickets.spec.ts     ← Creación interactiva TKT-XXXXX, filtros (M3)
+├── evidencias_testing.md       ← Registro de evidencias y capturas generadas
+└── agente_manual.md            ← 10 casos de prueba manual (UX/Visual/Exploratorio)
+```
+
+### Datos esperados del Seed (base de los assertions E2E)
+
+| KPI | Valor | Fuente |
+|-----|-------|--------|
+| Total Contactos | 10 | seed.ts — 10 contactos insertados |
+| Valor Pipeline | $223.700 (es-ES) | Suma 8 oportunidades: 28500+12000+75000+18900+9500+42000+6800+31000 |
+| Tasa Conversión | 12.5% | 1 oportunidad Ganada / 8 totales |
+| Tickets Abiertos | 3 | SAP + Analytics + Exportación |
+| Campañas Enviadas | 2 | Reactivación Q2 + Upsell Enterprise |
+
+---
+
 ## Pendientes Técnicos (Tech Debt)
 
 - [ ] **Autenticación JWT**: Middleware de protección de rutas + login/logout
 - [ ] **Drag-and-drop Kanban**: Reemplazar select inline por @dnd-kit/core
 - [ ] **Paginación server-side**: Para listas grandes (contactos, tickets)
-- [ ] **Tests**: Jest + Supertest (backend), React Testing Library (frontend)
+- [x] **Tests E2E**: Playwright + TypeScript — 22 tests en `e2e-tests/` (API + UI)
+- [ ] **Tests unitarios**: Jest + Supertest (backend), React Testing Library (frontend)
 - [ ] **Notificaciones realtime**: Socket.io para alertas de nuevos tickets
 - [ ] **Exportación CSV**: Botón exportar contactos y reportes
 - [ ] **Validación Zod**: Validación estricta de payloads en API endpoints
