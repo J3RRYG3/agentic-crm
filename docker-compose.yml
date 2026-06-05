@@ -1,0 +1,60 @@
+services:
+  database:
+    image: mongo:6.0
+    container_name: crm_database
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - crm_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: crm_backend
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      MONGODB_URI: "mongodb://database:27017/minicrm"
+    depends_on:
+      database:
+        condition: service_healthy
+    volumes:
+      - ./server/src:/app/src:ro
+    networks:
+      - crm_network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: crm_frontend
+    ports:
+      - "5173:5173"
+    environment:
+      API_TARGET: "http://backend:8080"
+    depends_on:
+      - backend
+    volumes:
+      - ./client/src:/app/src:ro
+    networks:
+      - crm_network
+    restart: unless-stopped
+
+networks:
+  crm_network:
+    driver: bridge
+
+volumes:
+  mongo_data:
