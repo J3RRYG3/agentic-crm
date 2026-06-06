@@ -27,14 +27,15 @@ test.describe('E2E – M2 Pipeline Kanban', () => {
     await expect(page.getByText('Cargando pipeline...')).not.toBeVisible({
       timeout: 15_000,
     });
-    // Esperar columnas del Kanban
-    await expect(page.getByText('Prospecto')).toBeVisible({ timeout: 15_000 });
+    // Esperar columnas del Kanban — selector semántico estable apuntando al encabezado de columna
+    await expect(page.locator('span.text-xs.font-semibold', { hasText: 'Prospecto' }).first()).toBeVisible({ timeout: 15_000 });
   });
 
   test('Pipeline carga todas las columnas del Kanban', async ({ page }) => {
     const stages = ['Prospecto', 'Calificado', 'Propuesta', 'Negociación', 'Ganado', 'Perdido'];
     for (const stage of stages) {
-      await expect(page.getByText(stage).first()).toBeVisible();
+      // Selector semántico estable: encabezado de columna span, no las options de los selects
+      await expect(page.locator('span.text-xs.font-semibold', { hasText: stage }).first()).toBeVisible();
     }
   });
 
@@ -44,7 +45,9 @@ test.describe('E2E – M2 Pipeline Kanban', () => {
     // Buscar la tarjeta por su título
     const card = page.locator('div.bg-white.rounded-lg', { hasText: OPP_TITLE });
     await expect(card).toBeVisible();
-    await expect(card).toContainText('9.500'); // valor en es-ES: 9.500
+    // El valor 9500 puede renderizarse como "9.500" o "9500" según ICU del entorno
+    const cardText = await card.textContent();
+    expect(cardText).toMatch(/9[.,]?500/);
     await expect(card).toContainText('Elena Ruiz Navarro'); // contacto del seed
   });
 

@@ -196,50 +196,22 @@ const seed = async (): Promise<void> => {
   console.log(`${opportunities.length} oportunidades insertadas.`);
 
   console.log('Insertando tickets...');
-  const tickets = await Ticket.insertMany([
-    {
-      contact: contacts[0]._id,
-      subject: 'Error en módulo de facturación automática',
-      description: 'Al generar facturas recurrentes el sistema duplica los registros cuando hay más de 50 líneas de detalle.',
-      priority: 'Alta',
-      status: 'En Progreso',
-    },
-    {
-      contact: contacts[3]._id,
-      subject: 'Solicitud de integración con SAP',
-      description: 'Necesitamos documentación y soporte para integrar nuestra instancia de SAP con la API del CRM.',
-      priority: 'Media',
-      status: 'Abierto',
-    },
-    {
-      contact: contacts[6]._id,
-      subject: 'Panel de analytics no carga datos',
-      description: 'Desde la actualización de ayer, el dashboard de analítica muestra una pantalla en blanco en Safari y Firefox.',
-      priority: 'Alta',
-      status: 'Abierto',
-    },
-    {
-      contact: contacts[1]._id,
-      subject: 'Configuración de permisos por roles',
-      description: 'Requieren que ciertos usuarios solo puedan ver sus propios registros y no los de otros agentes de venta.',
-      priority: 'Media',
-      status: 'Resuelto',
-    },
-    {
-      contact: contacts[9]._id,
-      subject: 'Exportación masiva a Excel',
-      description: 'La función de exportar más de 5000 registros falla con timeout. Solo descarga los primeros 500.',
-      priority: 'Alta',
-      status: 'Abierto',
-    },
-    {
-      contact: contacts[4]._id,
-      subject: 'Consulta sobre renovación de suscripción',
-      description: 'El cliente solicita información sobre los planes de renovación anual y posibles descuentos por volumen.',
-      priority: 'Baja',
-      status: 'Resuelto',
-    },
-  ]);
+  // insertMany omite los hooks pre('save'), por lo que 'code' quedaría null.
+  // Se guarda uno a uno para que el hook genere TKT-XXXXX correctamente.
+  const ticketDocs = [
+    { contact: contacts[0]._id, subject: 'Error en módulo de facturación automática', description: 'Al generar facturas recurrentes el sistema duplica los registros cuando hay más de 50 líneas de detalle.', priority: 'Alta' as const, status: 'En Progreso' as const },
+    { contact: contacts[3]._id, subject: 'Solicitud de integración con SAP', description: 'Necesitamos documentación y soporte para integrar nuestra instancia de SAP con la API del CRM.', priority: 'Media' as const, status: 'Abierto' as const },
+    { contact: contacts[6]._id, subject: 'Panel de analytics no carga datos', description: 'Desde la actualización de ayer, el dashboard de analítica muestra una pantalla en blanco en Safari y Firefox.', priority: 'Alta' as const, status: 'Abierto' as const },
+    { contact: contacts[1]._id, subject: 'Configuración de permisos por roles', description: 'Requieren que ciertos usuarios solo puedan ver sus propios registros y no los de otros agentes de venta.', priority: 'Media' as const, status: 'Resuelto' as const },
+    { contact: contacts[9]._id, subject: 'Exportación masiva a Excel', description: 'La función de exportar más de 5000 registros falla con timeout. Solo descarga los primeros 500.', priority: 'Alta' as const, status: 'Abierto' as const },
+    { contact: contacts[4]._id, subject: 'Consulta sobre renovación de suscripción', description: 'El cliente solicita información sobre los planes de renovación anual y posibles descuentos por volumen.', priority: 'Baja' as const, status: 'Resuelto' as const },
+  ];
+  const tickets = [];
+  for (const doc of ticketDocs) {
+    const ticket = new Ticket(doc);
+    await ticket.save();
+    tickets.push(ticket);
+  }
 
   console.log(`${tickets.length} tickets insertados.`);
 
